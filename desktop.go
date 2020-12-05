@@ -1,11 +1,7 @@
 package midocui
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/gdamore/tcell/v2"
-	"github.com/gdamore/tcell/v2/encoding"
 )
 
 var Desktop = Window{
@@ -41,27 +37,3 @@ func PaintDesktop() {
 
 var Screen tcell.Screen
 
-func InitScreen() {
-	encoding.Register()
-
-	// Console initialization
-	s, e := tcell.NewScreen()
-	if e != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", e)
-		os.Exit(1)
-	}
-
-	Screen = s
-
-	if e := Screen.Init(); e != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", e)
-		os.Exit(1)
-	}
-
-	defStyle := tcell.StyleDefault.
-		Background(tcell.ColorBlack).
-		Foreground(tcell.ColorWhite)
-	Screen.SetStyle(defStyle)
-
-	Screen.Clear()
-}

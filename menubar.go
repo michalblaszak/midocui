@@ -1,6 +1,9 @@
 package midocui
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"github.com/gdamore/tcell/v2"
+)
+
 
 const (
 	MenuItemDefaultBkgColor          = tcell.ColorWhite
@@ -24,12 +27,12 @@ type MenuBar struct {
 }
 
 func (s *MenuBar) Paint() {
-	parent_x, parent_y, parent_w, _ := s.Widget.parent.getClientCoord()
-	bs_top, bs_right, _, bs_left := s.Widget.parent.getBorderStyles()
+	parentX, parentY, parentW, _ := s.Widget.parent.getClientCoord()
+	bsTop, bsRight, _, bsLeft := s.Widget.parent.getBorderStyles()
 
-	start_y := iifBorderStyle(bs_top == BorderStyleNone, parent_y, parent_y+1)
-	start_x := iifBorderStyle(bs_left == BorderStyleNone, parent_x, parent_x+1)
-	end_x := iifBorderStyle(bs_right == BorderStyleNone, parent_x+parent_w-1, parent_x+parent_w-2)
+	startY := iifBorderStyle(bsTop == BorderStyleNone, parentY, parentY+1)
+	startX := iifBorderStyle(bsLeft == BorderStyleNone, parentX, parentX+1)
+	endX := iifBorderStyle(bsRight == BorderStyleNone, parentX+parentW-1, parentX+parentW-2)
 
 	// Draw the bar
 	st := tcell.StyleDefault
@@ -37,13 +40,13 @@ func (s *MenuBar) Paint() {
 	st = st.Foreground(s.foreColor)
 	st = st.Bold(true)
 
-	for x := start_x; x <= end_x; x++ {
-		Screen.SetContent(x, start_y, s.bkgPattern, nil, st)
+	for x := startX; x <= endX; x++ {
+		Screen.SetContent(x, startY, s.bkgPattern, nil, st)
 	}
 
 	// Draw menu items
 	st = tcell.StyleDefault
-	x := start_x
+	x := startX
 	for _, item := range s.menuItems {
 		switch {
 		case !item.enabled:
@@ -52,12 +55,15 @@ func (s *MenuBar) Paint() {
 		case s.active && item.enabled && item.selected:
 			st = st.Background(item.bkgColorSelected)
 			st = st.Foreground(item.foreColorSelected)
+		case !s.active && item.enabled && item.selected:
+			st = st.Background(item.bkgColor)
+			st = st.Foreground(item.foreColor)
 		case item.enabled && !item.selected:
 			st = st.Background(item.bkgColor)
 			st = st.Foreground(item.foreColor)
 		}
 
-		x += EmitStr(x, start_y, st, " "+item.label+" ")
+		x += EmitStr(x, startY, st, " "+item.label+" ")
 	}
 }
 
@@ -74,6 +80,8 @@ func (s *MenuBar) AddMenuItem(label string) *MenuItem {
 		foreColorSelected: MenuItemDefaultForeColorSelected,
 	}
 	s.menuItems = append(s.menuItems, &_menuItem)
+
+    repaint = true;
 
 	return &_menuItem
 }
@@ -99,9 +107,11 @@ func (s *MenuBar) ToggleActive() {
 		}
 
 		if !found {
-			s.menuItems[0].selected = true
+            s.selectFirstAvailable()
 		}
-	}
+    }
+    
+    repaint = true;
 }
 
 func (s *MenuBar) HandleEvent(event *Event) {
@@ -109,12 +119,96 @@ func (s *MenuBar) HandleEvent(event *Event) {
 	case EventTypeKey:
 		switch event.Key {
 		case tcell.KeyF10:
-			s.ToggleActive()
-			// TODO: make event consumed
-		}
+            s.ToggleActive()
+            event.processed = true
+        case tcell.KeyLeft:
+            if s.active {
+                s.activatePrevious()
+                event.processed = true
+            }
+        case tcell.KeyRight:
+            if s.active {
+                s.activateNext()
+                event.processed = true
+            }
+        }
+        
 	case EventTypeMouse:
 	case EventTypeConsole:
 	}
+}
+
+func (s *MenuBar) activateNext() {
+    selectNext := false
+    for _, item := range s.menuItems {
+        if item.selected {
+            item.selected = false
+            selectNext = true
+            continue
+        }
+        if selectNext && item.enabled {
+            item.selected = true
+            selectNext = false
+            break;
+        }
+    }
+
+    // 'selectNext' remains selected if there were no more items available for selection after the previous one.
+    // We need to select the first available one (roll over)
+    if selectNext {
+        s.selectFirstAvailable()
+    }
+
+    repaint = true;
+}
+
+func (s *MenuBar) activatePrevious() {
+    rangeLen := len(s.menuItems)-1
+    selectNext := false
+    for i := range s.menuItems {
+        item := s.menuItems[rangeLen-i]
+        if item.selected {
+            item.selected = false
+            selectNext = true
+            continue
+        }
+        if selectNext && item.enabled {
+            item.selected = true
+            selectNext = false
+        }
+    }
+
+    // 'selectNext' remains selected if there were no more items available for selection before the previous one.
+    // We need to select the last available one (roll over)
+    if selectNext {
+        s.selectLastAvailable()
+    }
+
+    repaint  = true
+}
+
+func (s *MenuBar) selectFirstAvailable() {
+    for _, item := range s.menuItems {
+        if item.enabled {
+            item.selected = true
+            break
+        }
+    }
+
+    repaint = true
+}
+
+func (s *MenuBar) selectLastAvailable() {
+    rangeLen := len(s.menuItems)-1
+    for i := range s.menuItems {
+        item := s.menuItems[rangeLen-i]
+        if item.enabled {
+            item.selected = true
+            break
+        }
+    }
+
+    repaint = true
 }
 
 type MenuItem struct {
@@ -131,9 +225,13 @@ type MenuItem struct {
 }
 
 func (m *MenuItem) Enable() {
-	m.enabled = true
+    m.enabled = true
+    
+    repaint = true;
 }
 
 func (m *MenuItem) Disable() {
-	m.enabled = false
+    m.enabled = false
+    
+    repaint = true
 }

@@ -12,5 +12,6 @@ const (
 
 type Event struct {
 	EventType TEventType
-	Key       tcell.Key
+    Key       tcell.Key
+    processed bool
 }
