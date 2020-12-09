@@ -36,3 +36,24 @@ func StrCellWidth(s string) int {
 	}
 	return len
 }
+
+func minInt(a, b int) int {
+    if (a < b) {
+        return a
+    }
+
+    return b
+}
+
+func maxInt(a, b int) int {
+    if (a > b) {
+        return a
+    }
+
+    return b
+}
+
+// Checks if i is in [left; right]
+func in (i, left, right int) bool {
+    return i >= left && i <= right
+}

@@ -27,12 +27,13 @@ type MenuBar struct {
 }
 
 func (s *MenuBar) Paint() {
-	parentX, parentY, parentW, _ := s.Widget.parent.getClientCoord()
-	bsTop, bsRight, _, bsLeft := s.Widget.parent.getBorderStyles()
+	x1, y1, x2, _ := s.Widget.parent.getDeviceClientCoords(windowWithBorders)
+	// parentX, parentY, parentW, _ := s.Widget.parent.getDeviceClientCoord()
+	// bsTop, bsRight, _, bsLeft := s.Widget.parent.getBorderStyles()
 
-	startY := iifBorderStyle(bsTop == BorderStyleNone, parentY, parentY+1)
-	startX := iifBorderStyle(bsLeft == BorderStyleNone, parentX, parentX+1)
-	endX := iifBorderStyle(bsRight == BorderStyleNone, parentX+parentW-1, parentX+parentW-2)
+	// startY := iifBorderStyle(bsTop == BorderStyleNone, parentY, parentY+1)
+	// startX := iifBorderStyle(bsLeft == BorderStyleNone, parentX, parentX+1)
+	// endX := iifBorderStyle(bsRight == BorderStyleNone, parentX+parentW-1, parentX+parentW-2)
 
 	// Draw the bar
 	st := tcell.StyleDefault
@@ -40,13 +41,16 @@ func (s *MenuBar) Paint() {
 	st = st.Foreground(s.foreColor)
 	st = st.Bold(true)
 
-	for x := startX; x <= endX; x++ {
-		Screen.SetContent(x, startY, s.bkgPattern, nil, st)
+	// for x := startX; x <= endX; x++ {
+	// 	Screen.SetContent(x, startY, s.bkgPattern, nil, st)
+	// }
+	for x := x1; x <= x2; x++ {
+		Screen.SetContent(x, y1, s.bkgPattern, nil, st)
 	}
 
 	// Draw menu items
 	st = tcell.StyleDefault
-	x := startX
+	x := x1
 	for _, item := range s.menuItems {
 		switch {
 		case !item.enabled:
@@ -63,7 +67,7 @@ func (s *MenuBar) Paint() {
 			st = st.Foreground(item.foreColor)
 		}
 
-		x += EmitStr(x, startY, st, " "+item.label+" ")
+		x += EmitStr(x, y1, st, " "+item.label+" ")
 	}
 }
 
@@ -88,15 +92,18 @@ func (s *MenuBar) AddMenuItem(label string) *MenuItem {
 
 func (s *MenuBar) ToggleActive() {
 	if len(s.menuItems) == 0 {
-		s.active = false
+        s.active = false
+        s.parent.setActiveWidget(nil)
 		return
 	}
 
 	// The menubar contains some items
 	if s.active {
 		s.active = false
+        s.parent.setActiveWidget(nil)
 	} else {
-		s.active = true
+        s.active = true
+        s.parent.setActiveWidget(s)
 
 		found := false
 		for _, item := range s.menuItems {
@@ -131,11 +138,32 @@ func (s *MenuBar) HandleEvent(event *Event) {
                 s.activateNext()
                 event.processed = true
             }
+        case tcell.KeyEnter:
+            if s.active {
+                s.getActiveMenuItem().Action()
+            }
         }
         
 	case EventTypeMouse:
 	case EventTypeConsole:
 	}
+}
+
+func (s *MenuBar) getActiveMenuItem() *MenuItem {
+    if s == nil {
+        return nil
+    }
+
+    var _ret *MenuItem = nil
+
+    for _, item := range s.menuItems {
+        if item.selected {
+            _ret = item
+            break
+        }
+    }
+
+    return _ret
 }
 
 func (s *MenuBar) activateNext() {
@@ -221,7 +249,8 @@ type MenuItem struct {
 	bkgColorDisabled  tcell.Color
 	foreColorDisabled tcell.Color
 	bkgColorSelected  tcell.Color
-	foreColorSelected tcell.Color
+    foreColorSelected tcell.Color
+    Action func()
 }
 
 func (m *MenuItem) Enable() {

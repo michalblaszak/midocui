@@ -37,13 +37,16 @@ func InitScreen() {
 		Foreground(tcell.ColorWhite)
 	Screen.SetStyle(defStyle)
 
-	Screen.Clear()
+    Screen.Clear()
+    
+    // Initialize desktop window
+	Desktop.w, Desktop.h = Screen.Size()
 }
 
 func Paint() {
 	// w, h := Screen.Size()
 
-	PaintDesktop()
+	Desktop.Paint()
 
 	// midocui.EmitStr(w/2-7, h/2, tcell.StyleDefault, "Hello, Michałl!")
 	// midocui.EmitStr(w/2-9, h/2+1, tcell.StyleDefault, "Press ESC to exit.")
@@ -65,25 +68,31 @@ func (a *SApp) Run() {
 	// TODO: End remove
 
 	for {
-		switch ev := Screen.PollEvent().(type) {
-		case *tcell.EventResize:
-			// TODO: Remove: debug
-			xx, yy := ev.Size()
-			_, err := f.WriteString(strconv.Itoa(xx) + "," + strconv.Itoa(yy) + "\n")
-			if err != nil {
-				panic(err)
-			}
-			// TODO: End remove
-			Screen.Sync()
-		case *tcell.EventKey:
-			Desktop.HandleEvent(&Event{EventType: EventTypeKey, Key: ev.Key(), processed: false})
+        switch ev := Screen.PollEvent().(type) {
+        case *tcell.EventResize:
+            // TODO: Remove: debug
+            xx, yy := ev.Size()
+            _, err := f.WriteString(strconv.Itoa(xx) + "," + strconv.Itoa(yy) + "\n")
+            if err != nil {
+                panic(err)
+            }
+            // TODO: End remove
+            Screen.Sync()
+            Desktop.resize()
+        case *tcell.EventKey:
+            Desktop.HandleEvent(&Event{EventType: EventTypeKey, Key: ev.Key(), Rune: ev.Rune(), Modifiers: ev.Modifiers(), processed: false})
 
-			if ev.Key() == tcell.KeyEscape {
-				Screen.Fini()
-				os.Exit(0)
-			}
+            if ev.Key() == tcell.KeyEscape {
+                Screen.Fini()
+                os.Exit(0)
+            }
+        case *SysEventQuit:
+            Screen.Fini()
+            os.Exit(0)
+        case *AppEventCloseCurrentWin:
+            Desktop.CloseCurrentWin()
         }
-        
+
         if repaint {
             repaint = false;
             Paint()

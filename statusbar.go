@@ -11,20 +11,24 @@ type StatusBar struct {
 }
 
 func (s *StatusBar) Paint() {
-	parent_x, parent_y, parent_w, parent_h := s.Widget.parent.getClientCoord()
-	_, bs_right, bs_bottom, bs_left := s.Widget.parent.getBorderStyles()
+	x1, _, x2, y2 := s.Widget.parent.getDeviceClientCoords(windowWithBorders)
+//	parentX1, parentY1, parentX1, parentY2 := s.Widget.parent.getDeviceClientCoords()
+//	_, bs_right, bs_bottom, bs_left := s.Widget.parent.getBorderStyles()
 
-	end_y := iifBorderStyle(bs_bottom == BorderStyleNone, parent_y+parent_h-1, parent_y+parent_h-2)
-	start_x := iifBorderStyle(bs_left == BorderStyleNone, parent_x, parent_x+1)
-	end_x := iifBorderStyle(bs_right == BorderStyleNone, parent_x+parent_w-1, parent_x+parent_w-2)
+//	end_y := iifBorderStyle(bs_bottom == BorderStyleNone, parent_y+parent_h-1, parent_y+parent_h-2)
+//	start_x := iifBorderStyle(bs_left == BorderStyleNone, parent_x, parent_x+1)
+//	end_x := iifBorderStyle(bs_right == BorderStyleNone, parent_x+parent_w-1, parent_x+parent_w-2)
 
 	st := tcell.StyleDefault
 	st = st.Background(s.bkgColor)
 	st = st.Foreground(s.foreColor)
 	st = st.Bold(true)
 
-	for x := start_x; x <= end_x; x++ {
-		Screen.SetContent(x, end_y, s.bkgPattern, nil, st)
+	// for x := start_x; x <= end_x; x++ {
+	// 	Screen.SetContent(x, end_y, s.bkgPattern, nil, st)
+	// }
+	for x := x1; x <= x2; x++ {
+		Screen.SetContent(x, y2, s.bkgPattern, nil, st)
 	}
 }
 

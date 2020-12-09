@@ -1,6 +1,10 @@
 package midocui
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"strconv"
+
+	"github.com/gdamore/tcell/v2"
+)
 
 type BorderStyles int
 
@@ -13,7 +17,8 @@ const (
 type Border struct {
 	top, right, bottom, left BorderStyles
 	bkgColor                 tcell.Color
-	foreColor                tcell.Color
+	foreColorActive          tcell.Color
+	foreColorInactive        tcell.Color
 }
 
 func getHorizontalBorder(b BorderStyles) rune {
@@ -174,71 +179,143 @@ type Window struct {
 
 	// Special widgets
 	menubar   *MenuBar
-	statusbar *StatusBar
+    statusbar *StatusBar
+}
+
+func CreateWindow(parentPar IWidget) *Window {
+    // TODO: use widget creator
+    widgetIDCounter++
+
+    _win := Window{
+        Widget: Widget{
+            id: widgetIDCounter,
+            parent: parentPar,
+            top:  0,
+            left: 0,
+            w:    20,
+            h:    20,
+            border: Border{
+                top:       BorderStyleSingle,
+                right:     BorderStyleDouble,
+                bottom:    BorderStyleSingle,
+                left:      BorderStyleDouble,
+                bkgColor:  tcell.ColorBlue,
+                foreColorActive: tcell.ColorWhite,
+                foreColorInactive: tcell.ColorGray,
+            },
+            activeWidget: nil,
+        },
+        resizable:  false,
+        bkgColor:   tcell.ColorBlue,
+        bkgPattern: tcell.RuneBoard,
+        foreColor:  tcell.ColorWhite,
+        menubar:    nil,
+        statusbar:  nil,
+    }
+
+    return &_win
+}
+
+func (w *Window) SetCoords(left, top, width, height int) {
+    w.left = left
+    w.top = top
+    w.w = width
+    w.h = height
 }
 
 // No interface methods
 func (w *Window) paintBorder() {
-	// Paint border
-	top_border := w.border.getTopBorder()
-	bottom_border := w.border.getBottomBorder()
-	left_border := w.border.getLeftBorder()
-	right_border := w.border.getRightBorder()
+    // Is this window the active one in it's parent?
+    _isActive := Desktop.activeWindow != nil && Desktop.activeWindow.id == w.id
+    var px1, py1, px2, py2 int
 
-	left_top_corner := w.border.getLeftTopBorder()
-	right_top_corner := w.border.getRightTopBorder()
-	left_bottom_corner := w.border.getLeftBottomBorder()
-	right_bottom_corner := w.border.getRightBottomBorder()
+    if w.parent == nil {
+        px1, py1, px2, py2 = w.getDeviceClientCoords(windowRaw)
+    } else {
+        px1, py1, px2, py2 = w.parent.getDeviceClientCoords(windowClientArea)
+    }
+    x1, y1, x2, y2 := w.getDeviceClientCoords(windowRaw)
+
+	// Paint border
+	topBorder := w.border.getTopBorder()
+	bottomBorder := w.border.getBottomBorder()
+	leftBorder := w.border.getLeftBorder()
+	rightBorder := w.border.getRightBorder()
+
+	leftTopCorner := w.border.getLeftTopBorder()
+	rightTopCorner := w.border.getRightTopBorder()
+	leftBottomCorner := w.border.getLeftBottomBorder()
+	rightBottomCorner := w.border.getRightBottomBorder()
 
 	st := tcell.StyleDefault
-	st = st.Background(w.border.bkgColor)
-	st = st.Foreground(w.border.foreColor)
+    st = st.Background(w.border.bkgColor)
+    if _isActive {
+        st = st.Foreground(w.border.foreColorActive)
+    } else {
+        st = st.Foreground(w.border.foreColorInactive)
+    }
 	st = st.Bold(true)
 
-	Screen.SetContent(0, 0, left_top_corner, nil, st)
-	Screen.SetContent(w.w-1, 0, right_top_corner, nil, st)
-	Screen.SetContent(0, w.h-1, left_bottom_corner, nil, st)
-	Screen.SetContent(w.w-1, w.h-1, right_bottom_corner, nil, st)
+    // Corners
+    if in(x1, px1, px2) && in(y1, py1, py2) {
+        Screen.SetContent(x1, y1, leftTopCorner, nil, st)
+    }
+    if in(x2, px1, px2) && in(y1, py1, py2) {
+        Screen.SetContent(x2, y1, rightTopCorner, nil, st)
+    }
+    if in(x1, px1, px2) && in(y2, py1, py2) {
+        Screen.SetContent(x1, y2, leftBottomCorner, nil, st)
+    }
+    if in(x2, px1, px2) && in(y2, py1, py2) {
+        Screen.SetContent(x2, y2, rightBottomCorner, nil, st)
+    }
 
-	for x := 1; x < w.w-1; x++ {
-		Screen.SetContent(x, 0, top_border, nil, st)
-		Screen.SetContent(x, w.h-1, bottom_border, nil, st)
-	}
-	for y := 1; y < w.h-1; y++ {
-		Screen.SetContent(0, y, left_border, nil, st)
-		Screen.SetContent(w.w-1, y, right_border, nil, st)
-	}
-}
-
-func iifBorderStyle(cond bool, v_true int, v_false int) int {
-	if cond {
-		return v_true
-	} else {
-		return v_false
-	}
+    // Horizontal border lines
+	for x := maxInt(x1+1, px1); x <= minInt(x2-1, px2); x++ {
+        if in(y1, py1, py2) {
+            Screen.SetContent(x, y1, topBorder, nil, st)
+        }
+        if in(y2, py1, py2) {
+            Screen.SetContent(x, y2, bottomBorder, nil, st)
+        }
+    }
+    // Vertical border lines
+	for y := maxInt(y1+1, py1); y <= minInt(y2-1, py2); y++ {
+        if in(x1, px1, px2) {
+            Screen.SetContent(x1, y, leftBorder, nil, st)
+        }
+        if in(x2, px1, px2) {
+            Screen.SetContent(x2, y, rightBorder, nil, st)
+        }
+    }
+    
+    // Title
+    EmitStr(x1+2, y1, st, strconv.Itoa(w.id))
 }
 
 func (w *Window) paintBackground() {
-	start_y := iifBorderStyle(w.border.top == BorderStyleNone, 0, 1)
-	end_y := iifBorderStyle(w.border.bottom == BorderStyleNone, w.h-1, w.h-2)
-	start_x := iifBorderStyle(w.border.left == BorderStyleNone, 0, 1)
-	end_x := iifBorderStyle(w.border.right == BorderStyleNone, w.w-1, w.w-2)
+    var px1, py1, px2, py2 int
+
+    if w.parent == nil {
+        px1, py1, px2, py2 = w.getDeviceClientCoords(windowRaw)
+    } else {
+        px1, py1, px2, py2 = w.parent.getDeviceClientCoords(windowClientArea)
+    }
+    x1, y1, x2, y2 := w.getDeviceClientCoords(windowWithBorders)
 
 	st := tcell.StyleDefault
 	st = st.Background(w.bkgColor)
 	st = st.Foreground(w.foreColor)
 	st = st.Bold(true)
 
-	for x := start_x; x <= end_x; x++ {
-		for y := start_y; y <= end_y; y++ {
+	for x := maxInt(x1, px1); x <= minInt(x2, px2); x++ {
+		for y := maxInt(y1, py1); y <= minInt(y2, py2); y++ {
 			Screen.SetContent(x, y, w.bkgPattern, nil, st)
 		}
 	}
 }
 
 func (w *Window) Paint() {
-	w.w, w.h = Screen.Size()
-
 	w.paintBorder()
 	w.paintBackground()
 	if w.statusbar != nil {
@@ -249,13 +326,30 @@ func (w *Window) Paint() {
 	}
 }
 
+// HandleEvent
+// Standard key bindings:
+// F10 - toggle menubar
+// Alt-C - close the window
 func (w *Window) HandleEvent(event *Event) {
-	if w.statusbar != nil {
-		w.statusbar.HandleEvent(event)
-	}
-	if w.menubar != nil {
-		w.menubar.HandleEvent(event)
-	}
+    switch {
+    case event.EventType == EventTypeKey && event.Key == tcell.KeyF10 && (event.Modifiers == tcell.ModNone ) && w.menubar != nil:
+        w.menubar.ToggleActive()
+        event.processed = true
+        repaint = true
+    case event.EventType == EventTypeKey && event.Key == tcell.KeyRune && event.Rune == 'c' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
+        event.processed = true
+        w.Close()
+    // case event.EventType == EventTypeKey && event.Key == tcell.KeyRune && event.Rune == 'x' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
+    //     ev := &SysEventQuit{}
+    //     ev.SetEventNow()
+    //     go func() { Screen.PostEventWait(ev) }()
+    //     event.processed = true
+    }
+
+    if !event.processed && w.activeWidget != nil {
+        w.activeWidget.HandleEvent(event)
+    }
+
 }
 
 func (w *Window) AddStatusBar() *StatusBar {
@@ -272,7 +366,8 @@ func (w *Window) AddStatusBar() *StatusBar {
 				bottom:    BorderStyleNone,
 				left:      BorderStyleNone,
 				bkgColor:  tcell.ColorWhite,
-				foreColor: tcell.ColorBlack,
+				foreColorActive: tcell.ColorBlack,
+				foreColorInactive: tcell.ColorBlack,
 			},
 		},
 		bkgColor:   tcell.ColorWhite,
@@ -299,7 +394,8 @@ func (w *Window) AddMenuBar() *MenuBar {
 				bottom:    BorderStyleNone,
 				left:      BorderStyleNone,
 				bkgColor:  tcell.ColorWhite,
-				foreColor: tcell.ColorBlack,
+				foreColorActive: tcell.ColorBlack,
+				foreColorInactive: tcell.ColorBlack,
 			},
 		},
 		bkgColor:   tcell.ColorWhite,
@@ -311,4 +407,46 @@ func (w *Window) AddMenuBar() *MenuBar {
 	w.menubar = &_menuBar
 
 	return &_menuBar
+}
+
+func (w *Window) getDeviceClientCoords(clientAreaType TClientAreaType) (x1, y1, x2, y2 int) {
+    if w.parent == nil {
+        x1 = w.left
+        y1 = w.top
+        x2 = w.left + w.w - 1
+        y2 = w.top + w.h - 1
+    } else {
+        parentX1, parentY1, _, _ := w.parent.getDeviceClientCoords(windowClientArea)
+
+        x1 = parentX1 + w.left
+        y1 = parentY1 + w.top
+        // x2 = minInt(x1 + w.w, parentX2)
+        // y2 = minInt(y1 + w.h, parentY2)
+        x2 = x1 + w.w
+        y2 = y1 + w.h
+    } 
+
+    if clientAreaType == windowWithBorders || clientAreaType == windowClientArea {
+        if w.border.top != BorderStyleNone { y1++ }
+        if w.border.left != BorderStyleNone { x1++ }
+        if w.border.bottom != BorderStyleNone { y2-- }
+        if w.border.right != BorderStyleNone { x2-- }
+    }
+
+    if clientAreaType == windowClientArea {
+        if w.menubar != nil { y1++ }
+        if w.statusbar != nil {y2-- }
+    }
+
+    return
+}
+
+func (w* Window) stopWin() {
+// TODO: At the moment doesn't do anything. Planned to stop threads, save files, close child objects etc.
+}
+
+func (w *Window) Close() {
+    ev := &AppEventCloseCurrentWin{}
+    ev.SetEventNow()
+    go func() { Screen.PostEventWait(ev) }()    
 }

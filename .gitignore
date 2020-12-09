@@ -1,4 +1,4 @@
-.exe
-_debug_bin
-dat2
+demo/dat2
 .vscode/
+demo/__debug_bin
+demo/demo.exe
