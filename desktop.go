@@ -44,20 +44,6 @@ var Desktop = DesktopWindow{
 // Ctrl-Tab        : move to the next window
 // Other keystrokes: will be delegate to the currently active window or decktop's menubar (if active)
 func (d *DesktopWindow) HandleEvent(event *Event) {
-    switch {
-    case event.EventType == EventTypeKey && event.Key == tcell.KeyF10 && (event.Modifiers & tcell.ModAlt == tcell.ModAlt) && d.menubar != nil:
-        d.menubar.ToggleActive()
-        event.processed = true
-    case event.EventType == EventTypeKey && event.Key == tcell.KeyRune && event.Rune == 'x' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
-        ev := &SysEventQuit{}
-        ev.SetEventNow()
-        go func() { Screen.PostEventWait(ev) }()
-        event.processed = true
-    case event.EventType == EventTypeKey && event.Key == tcell.KeyTab && (event.Modifiers & tcell.ModCtrl == tcell.ModCtrl):
-        d.activateNextWindow()
-        event.processed = true
-    }
-
     if !event.processed {
         if d.activeWidget != nil {
             d.activeWidget.HandleEvent(event)
@@ -67,6 +53,22 @@ func (d *DesktopWindow) HandleEvent(event *Event) {
     if !event.processed {
         if d.activeWindow != nil {
             d.activeWindow.HandleEvent(event)
+        }
+    }
+
+    if !event.processed {
+        switch {
+        case event.EventType == EventTypeKey && event.Key == tcell.KeyF10 && (event.Modifiers & tcell.ModAlt == tcell.ModAlt) && d.menubar != nil:
+            d.menubar.ToggleActive()
+            event.processed = true
+        case event.EventType == EventTypeKey && event.Key == tcell.KeyRune && event.Rune == 'x' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
+            ev := &SysEventQuit{}
+            ev.SetEventNow()
+            go func() { Screen.PostEventWait(ev) }()
+            event.processed = true
+        case event.EventType == EventTypeKey && event.Key == tcell.KeyTab && (event.Modifiers & tcell.ModCtrl == tcell.ModCtrl):
+            d.activateNextWindow()
+            event.processed = true
         }
     }
 }

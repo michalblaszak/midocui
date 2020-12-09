@@ -142,6 +142,8 @@ func (s *MenuBar) HandleEvent(event *Event) {
             if s.active {
                 s.getActiveMenuItem().Action()
             }
+        default:
+            event.processed = true
         }
         
 	case EventTypeMouse:
