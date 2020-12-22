@@ -15,7 +15,7 @@ const (
 )
 
 type MenuBar struct {
-	Widget
+	NonBorderedWidget
 
 	bkgColor   tcell.Color
 	bkgPattern rune
@@ -27,13 +27,8 @@ type MenuBar struct {
 }
 
 func (s *MenuBar) Paint() {
-	x1, y1, x2, _ := s.Widget.parent.getDeviceClientCoords(windowWithBorders)
-	// parentX, parentY, parentW, _ := s.Widget.parent.getDeviceClientCoord()
-	// bsTop, bsRight, _, bsLeft := s.Widget.parent.getBorderStyles()
-
-	// startY := iifBorderStyle(bsTop == BorderStyleNone, parentY, parentY+1)
-	// startX := iifBorderStyle(bsLeft == BorderStyleNone, parentX, parentX+1)
-	// endX := iifBorderStyle(bsRight == BorderStyleNone, parentX+parentW-1, parentX+parentW-2)
+    //x1, y1, x2, y2 := s.Widget.parent.getDeviceClientCoords(windowWithBorders)
+    parentRegion, parentClip := s.getDeviceClientCoords(windowWithBorders)
 
 	// Draw the bar
 	st := tcell.StyleDefault
@@ -41,16 +36,21 @@ func (s *MenuBar) Paint() {
 	st = st.Foreground(s.foreColor)
 	st = st.Bold(true)
 
-	// for x := startX; x <= endX; x++ {
-	// 	Screen.SetContent(x, startY, s.bkgPattern, nil, st)
+    // clipRegion := ClippingRegion{
+    //     x1: x1,
+    //     y1: y1,
+    //     x2: x2,
+    //     y2: y2,
+    // }
+
+    s.erase(&parentClip, st, s.bkgPattern)
+	// for x := x1; x <= x2; x++ {
+	// 	Screen.SetContent(x, y1, s.bkgPattern, nil, st)
 	// }
-	for x := x1; x <= x2; x++ {
-		Screen.SetContent(x, y1, s.bkgPattern, nil, st)
-	}
 
 	// Draw menu items
 	st = tcell.StyleDefault
-	x := x1
+	x := parentRegion.x1
 	for _, item := range s.menuItems {
 		switch {
 		case !item.enabled:
@@ -67,7 +67,7 @@ func (s *MenuBar) Paint() {
 			st = st.Foreground(item.foreColor)
 		}
 
-		x += EmitStr(x, y1, st, " "+item.label+" ")
+		x += EmitStr(x, parentRegion.y1, st, " "+item.label+" ", &parentClip)
 	}
 }
 
@@ -85,7 +85,8 @@ func (s *MenuBar) AddMenuItem(label string) *MenuItem {
 	}
 	s.menuItems = append(s.menuItems, &_menuItem)
 
-    repaint = true;
+    //repaint = true;
+    //Repaint()
 
 	return &_menuItem
 }
@@ -118,12 +119,14 @@ func (s *MenuBar) ToggleActive() {
 		}
     }
     
-    repaint = true;
+    //repaint = true;
+    Repaint()
 }
 
-func (s *MenuBar) HandleEvent(event *Event) {
-	switch event.EventType {
-	case EventTypeKey:
+func (s *MenuBar) HandleEvent(ev IEvent) {
+	switch ev.(type) {
+    case *EventKey:
+        event := ev.(*EventKey)
 		switch event.Key {
 		case tcell.KeyF10:
             s.ToggleActive()
@@ -140,14 +143,18 @@ func (s *MenuBar) HandleEvent(event *Event) {
             }
         case tcell.KeyEnter:
             if s.active {
-                s.getActiveMenuItem().Action()
+                activeMenuItem := s.getActiveMenuItem()
+                if activeMenuItem != nil && activeMenuItem.Action != nil {
+                    activeMenuItem.Action()
+                }
+                event.processed = true
             }
         default:
             event.processed = true
         }
         
-	case EventTypeMouse:
-	case EventTypeConsole:
+	// case EventTypeMouse:
+	// case EventTypeConsole:
 	}
 }
 
@@ -189,7 +196,8 @@ func (s *MenuBar) activateNext() {
         s.selectFirstAvailable()
     }
 
-    repaint = true;
+//    repaint = true;
+    Repaint()
 }
 
 func (s *MenuBar) activatePrevious() {
@@ -214,7 +222,8 @@ func (s *MenuBar) activatePrevious() {
         s.selectLastAvailable()
     }
 
-    repaint  = true
+//    repaint  = true
+    Repaint()
 }
 
 func (s *MenuBar) selectFirstAvailable() {
@@ -225,7 +234,8 @@ func (s *MenuBar) selectFirstAvailable() {
         }
     }
 
-    repaint = true
+    // repaint = true
+    Repaint()
 }
 
 func (s *MenuBar) selectLastAvailable() {
@@ -238,7 +248,8 @@ func (s *MenuBar) selectLastAvailable() {
         }
     }
 
-    repaint = true
+//    repaint = true
+    Repaint()
 }
 
 type MenuItem struct {
@@ -258,11 +269,54 @@ type MenuItem struct {
 func (m *MenuItem) Enable() {
     m.enabled = true
     
-    repaint = true;
+//    repaint = true;
+//    Repaint()
 }
 
 func (m *MenuItem) Disable() {
     m.enabled = false
     
-    repaint = true
+//    repaint = true
+//    Repaint()
+}
+
+func (s *MenuBar) getDeviceClientCoords(_ TClientAreaType) (region Region, clipRegion ClippingRegion) {
+    var parentRegion Region
+    var parentClip ClippingRegion
+
+    screen_w, _ := Screen.Size()
+
+    if s.parent == nil {
+        region = Region{
+            x1: 0,
+            y1: 0,
+            x2: screen_w - 1,
+            y2: 0,
+        }
+        parentClip = ClippingRegion{
+            x1: region.x1,
+            y1: region.y1,
+            x2: region.x2,
+            y2: region.y2,
+        }
+    } else {
+        parentRegion, parentClip = s.parent.getDeviceClientCoords(windowWithBorders)
+
+        region = Region{
+            x1: parentRegion.x1,
+            y1: parentRegion.y1,
+            x2: parentRegion.x2,
+            y2: parentRegion.y1,
+        }
+    } 
+
+    // Adjust clipRegion
+    if s.parent != nil {
+        clipRegion.x1 = maxInt(region.x1, parentClip.x1)
+        clipRegion.y1 = maxInt(region.y1, parentClip.y1)
+        clipRegion.x2 = minInt(region.x2, parentClip.x2)
+        clipRegion.y2 = minInt(region.y2, parentClip.y2)
+    }
+
+    return
 }

@@ -1,12 +1,36 @@
 package main
 
 import (
+	"time"
+
+	"github.com/gdamore/tcell/v2"
 	"github.com/michalblaszak/midocui"
 )
 
+func win1Func(w *midocui.Window) {
+    // t := time.NewTicker(2 * time.Second)
+    // for now := range t.C {
+    //     fmt.Println("tick", now)
+    // }
+}
+
 func createNewWin1() {
     _win := midocui.CreateWindow(&midocui.Desktop)
+    _win.WinFunc = win1Func
+
+    _label := midocui.CreateLabel(_win)
+    _label.SetCoords(2, 2, 10, 1)
+    _label.SetColors(tcell.ColorBlack, ' ', tcell.ColorWhite)
+    _label.SetLabel("Michał Błaszak 乩")
+
+    _win.AddChild(_label)
+
     midocui.Desktop.RunWin(_win)
+}
+
+func win2TickerFun(w *midocui.Clock, t time.Time) {
+    w.SetCurrentTime()
+    midocui.Repaint()
 }
 
 func createNewWin2() {
@@ -16,6 +40,15 @@ func createNewWin2() {
     _menuBar.AddMenuItem("File")
     _menuItemClose := _menuBar.AddMenuItem("Close")
     _menuItemClose.Action = _win.Close
+
+    _clock := midocui.CreateClock(_win)
+
+    _win.AddChild(_clock)
+
+    _win.AddTicker(func (t time.Time) {
+        win2TickerFun(_clock, t)
+    })
+    
     midocui.Desktop.RunWin(_win)
 }
 
@@ -34,6 +67,7 @@ func main() {
     _menuItemNewWindow2.Action = createNewWin2
 
     /*_menuItem3 := */ _menuBar.AddMenuItem("Help")
+    _menuBar.AddMenuItem("Michał 乩")
 
 	/* _statusBar := */
 	midocui.Desktop.AddStatusBar()

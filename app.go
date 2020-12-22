@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/gdamore/tcell/v2/encoding"
@@ -80,17 +81,23 @@ func (a *SApp) Run() {
             Screen.Sync()
             Desktop.resize()
         case *tcell.EventKey:
-            Desktop.HandleEvent(&Event{EventType: EventTypeKey, Key: ev.Key(), Rune: ev.Rune(), Modifiers: ev.Modifiers(), processed: false})
-
-            if ev.Key() == tcell.KeyEscape {
-                Screen.Fini()
-                os.Exit(0)
+            event := EventKey {
+                Event: Event {
+                    timestamp: time.Now(),
+                    processed: false,
+                },
+                Key: ev.Key(),
+                Rune: ev.Rune(),
+                Modifiers: ev.Modifiers(),
             }
+            Desktop.HandleEvent(&event)
         case *SysEventQuit:
             Screen.Fini()
             os.Exit(0)
         case *AppEventCloseCurrentWin:
             Desktop.CloseCurrentWin()
+        case *AppEventRepaint:
+            repaint = true
         }
 
         if repaint {
@@ -98,4 +105,13 @@ func (a *SApp) Run() {
             Paint()
         }
 	}
+}
+
+func Repaint() {
+    appEv := &AppEventRepaint{}
+    appEv.SetEventNow()
+    if Screen == nil {
+        fmt.Println("Screen==nil")
+    }
+    go func() { Screen.PostEventWait(appEv) }()    
 }

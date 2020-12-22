@@ -4,6 +4,19 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
+type Region struct {
+    x1, y1, x2, y2 int
+}
+
+type ClippingRegion struct {
+    x1, y1, x2, y2 int
+}
+
+func (clip *ClippingRegion) inClipRecion(x, y int) bool {
+    return (x >= clip.x1) && (x <= clip.x2) && 
+           (y >= clip.y1) && (y <= clip.y2)
+}
+
 type DesktopWindow struct {
     Window
     childWindows []*Window
@@ -43,34 +56,40 @@ var Desktop = DesktopWindow{
 // Alt-x           : exit the application
 // Ctrl-Tab        : move to the next window
 // Other keystrokes: will be delegate to the currently active window or decktop's menubar (if active)
-func (d *DesktopWindow) HandleEvent(event *Event) {
-    if !event.processed {
+func (d *DesktopWindow) HandleEvent(ev IEvent) {
+    if !ev.Processed() {
         if d.activeWidget != nil {
-            d.activeWidget.HandleEvent(event)
+            d.activeWidget.HandleEvent(ev)
         }
     }
 
-    if !event.processed {
+    if !ev.Processed() {
+        switch ev.(type) {
+        case *EventKey:
+            event := ev.(*EventKey)
+            switch {
+            case event.Key == tcell.KeyF10 && (event.Modifiers & tcell.ModAlt == tcell.ModAlt) && d.menubar != nil:
+                d.menubar.ToggleActive()
+                event.processed = true
+            case event.Key == tcell.KeyRune && event.Rune == 'x' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
+                ev := &SysEventQuit{}
+                ev.SetEventNow()
+                go func() { Screen.PostEventWait(ev) }()
+                event.processed = true
+            case event.Key == tcell.KeyTab && (event.Modifiers & tcell.ModCtrl == tcell.ModCtrl):
+                d.activateNextWindow()
+                event.processed = true
+    
+            }
+        }
+    }
+
+    if !ev.Processed() {
         if d.activeWindow != nil {
-            d.activeWindow.HandleEvent(event)
+            d.activeWindow.SendEvent(ev)
         }
     }
 
-    if !event.processed {
-        switch {
-        case event.EventType == EventTypeKey && event.Key == tcell.KeyF10 && (event.Modifiers & tcell.ModAlt == tcell.ModAlt) && d.menubar != nil:
-            d.menubar.ToggleActive()
-            event.processed = true
-        case event.EventType == EventTypeKey && event.Key == tcell.KeyRune && event.Rune == 'x' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
-            ev := &SysEventQuit{}
-            ev.SetEventNow()
-            go func() { Screen.PostEventWait(ev) }()
-            event.processed = true
-        case event.EventType == EventTypeKey && event.Key == tcell.KeyTab && (event.Modifiers & tcell.ModCtrl == tcell.ModCtrl):
-            d.activateNextWindow()
-            event.processed = true
-        }
-    }
 }
 
 func (d *DesktopWindow) activateNextWindow() {
@@ -115,10 +134,12 @@ func (d *DesktopWindow) RunWin(win *Window) {
     d.childWindows = append(d.childWindows, win)
     d.activeWindow = win
 
+    go func() {win.startWin()} () // Start the window event loop
+
     repaint = true
 }
 
-func (w *DesktopWindow) getDeviceClientCoords(clientAreaType TClientAreaType) (x1, y1, x2, y2 int) {
+func (w *DesktopWindow) getDeviceClientCoords(clientAreaType TClientAreaType) (region Region, clipRegion ClippingRegion) {
     return w.Window.getDeviceClientCoords(clientAreaType)
 }
 

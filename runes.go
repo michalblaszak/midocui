@@ -135,3 +135,54 @@ const (
 	BoxDrawingsHeavyUpAndLightDown                rune = '\u257f' // ╿
 )
 
+// Block Elements: https://www.unicode.org/charts/PDF/U2580.pdf
+const (
+	BlockUpperHalf                                   rune = '\u2580' // ▀ UPPER HALF BLOCK
+	BlockLowerOneEighth                              rune = '\u2581' // ▁ LOWER ONE EIGHTH BLOCK
+	BlockLowerOneQuarter                             rune = '\u2582' // ▂ LOWER ONE QUARTER BLOCK
+	BlockLowerThreeEighths                           rune = '\u2583' // ▃ LOWER THREE EIGHTHS BLOCK
+	BlockLowerHalf                                   rune = '\u2584' // ▄ LOWER HALF BLOCK
+	BlockLowerFiveEighths                            rune = '\u2585' // ▅ LOWER FIVE EIGHTHS BLOCK
+	BlockLowerThreeQuarters                          rune = '\u2586' // ▆ LOWER THREE QUARTERS BLOCK
+	BlockLowerSevenEighths                           rune = '\u2587' // ▇ LOWER SEVEN EIGHTHS BLOCK
+	BlockFull                                        rune = '\u2588' // █ FULL BLOCK = solid → 25A0 ■  black square
+	BlockLeftSevenEighths                            rune = '\u2589' // ▉ LEFT SEVEN EIGHTHS BLOCK
+	BlockLeftThreeQuarters                           rune = '\u258A' // ▊ LEFT THREE QUARTERS BLOCK
+	BlockLeftFiveEighths                             rune = '\u258B' // ▋ LEFT FIVE EIGHTHS BLOCK
+	BlockLeftHalf                                    rune = '\u258C' // ▌ LEFT HALF BLOCK
+	BlockLeftThreeEights                             rune = '\u258D' // ▍ LEFT THREE EIGHTHS BLOCK
+	BlockLeftOneQuarter                              rune = '\u258E' // ▎ LEFT ONE QUARTER BLOCK
+	BlockLeftOneEghth                                rune = '\u258F' // ▏ LEFT ONE EIGHTH BLOCK
+	BlockRightHalf                                   rune = '\u2590' // ▐ RIGHT HALF BLOCK
+	ShadeLight                                       rune = '\u2591' // ░ LIGHT SHADE • 25%
+	ShadeMedium                                      rune = '\u2592' // ▒ MEDIUM SHADE = speckles fill, dotted fill • 50% • used in mapping to cp949 → 1FB90 🮐  inverse medium shade
+	DarkShade                                        rune = '\u2593' // ▓ DARK SHADE • 75%
+	BlockUpperOneEighth                              rune = '\u2594' // ▔ UPPER ONE EIGHTH BLOCK
+	BlockRightOneEighth                              rune = '\u2595' // ▕ RIGHT ONE EIGHTH BLOCK
+	BlockQuadrantLowerLeft                           rune = '\u2596' // ▖ QUADRANT LOWER LEFT
+	BlockQuadrantLowerRight                          rune = '\u2597' // ▗ QUADRANT LOWER RIGHT
+	BlockQuadrantUpperLeft                           rune = '\u2598' // ▘ QUADRANT UPPER LEFT
+	BlockQuadrantUpperLeftAndLowerLeftAndLowerRight  rune = '\u2599' // ▙ QUADRANT UPPER LEFT AND LOWER LEFT AND LOWER RIGHT
+	BlockQuadrantUpperLeftAndLowerRight              rune = '\u259A' // ▚ QUADRANT UPPER LEFT AND LOWER RIGHT → 1F67F 🙿  reverse checker board → 1FB95 🮕  checker board fill
+	BlockQuadrantUpperLeftAndUpperRightAndLowerLeft  rune = '\u259B' // ▛ QUADRANT UPPER LEFT AND UPPER RIGHT AND LOWER LEFT
+	BlockQuadrantUpperLeftAndUpperRightAndLowerRight rune = '\u259C' // ▜ QUADRANT UPPER LEFT AND UPPER RIGHT AND LOWER RIGHT
+	BlockQuadrantUpperRight                          rune = '\u259D' // ▝ QUADRANT UPPER RIGHT
+	BlockQuadrantUpperRightAndLowerLeft              rune = '\u259E' // ▞ QUADRANT UPPER RIGHT AND LOWER LEFT → 1F67E 🙾  checker board → 1FB96 🮖  inverse checker board fill
+	BlockQuadrantUpperAndLowerLeftAndLowerRight      rune = '\u259F' // ▟ QUADRANT UPPER RIGHT AND LOWER LEFT AND LOWER RIGHT
+)
+
+// From Geometric Shapes https://www.unicode.org/charts/PDF/U25A0.pdf
+const (
+	WhiteCircle                   rune = '\u25CB' // ○ WHITE CIRCLE
+	BlackCircle                   rune = '\u25CF' // ● BLACK CIRCLE
+	UpperLeftQuadrantCircularArc  rune = '\u25DC' // ◜ UPPER LEFT QUADRANT CIRCULAR ARC
+	UpperRightQuadrantCircularArc rune = '\u25DD' // ◝ UPPER RIGHT QUADRANT CIRCULAR ARC
+	LowerRightQuadrantCircularArc rune = '\u25DE' // ◞ LOWER RIGHT QUADRANT CIRCULAR ARC
+	LowerLeftQuadrantCircularArc  rune = '\u25DF' // ◟ LOWER LEFT QUADRANT CIRCULAR ARC
+	UpperHalfCircle               rune = '\u25E0' // ◠ UPPER HALF CIRCLE → 2312 ⌒  arc
+	LowerHalfCircle               rune = '\u25E1' // ◡ LOWER HALF CIRCLE
+	BlackLowerRightTriangle       rune = '\u25E2' // ◢ BLACK LOWER RIGHT TRIANGLE → 1FB9E 🮞  lower right triangular medium shade
+	BlackLowerLeftTriangle        rune = '\u25E3' // ◣ BLACK LOWER LEFT TRIANGLE  → 1FB9F 🮟  lower left triangular medium shade
+	BlackUpperLeftTriangle        rune = '\u25E4' // ◤ BLACK UPPER LEFT TRIANGLE  → 1FB9C 🮜  upper left triangular medium shade
+	BlackUpperRighttTriangle      rune = '\u25E5' // ◥ BLACK UPPER RIGHT TRIANGLE → 1FB9D �
+)

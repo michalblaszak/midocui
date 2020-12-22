@@ -6,8 +6,8 @@ import (
 )
 
 // Returns the number of screen cells ocupied by the string
-func EmitStr(x, y int, style tcell.Style, str string) int {
-	cell_x := x
+func EmitStr(x, y int, style tcell.Style, str string, clip *ClippingRegion) int {
+	cellX := x
 
 	for _, c := range str {
 		var comb []rune
@@ -16,12 +16,34 @@ func EmitStr(x, y int, style tcell.Style, str string) int {
 			comb = []rune{c}
 			c = ' '
 			w = 1
-		}
-		Screen.SetContent(cell_x, y, c, comb, style)
-		cell_x += w
+        }
+        
+        // Check if long runes fit into the clip region
+        if clip.inClipRecion(cellX, y) {
+            if w == 1 {
+                Screen.SetContent(cellX, y, c, comb, style)
+                cellX += w    
+            } else { // w == 2
+                if clip.inClipRecion(cellX+1, y) { // if the second half of the rune fits in the clip region
+                    Screen.SetContent(cellX, y, c, comb, style)
+                    cellX += w    
+                } else { // The second half of the rune doesn't fit into the clip region
+                    // Just print ' ' instead of the entire double-width rune
+                    comb = []rune{c}
+                    c = ' '
+                    w = 1
+                    Screen.SetContent(cellX, y, c, comb, style)
+                    cellX += w    
+
+                    break;
+                }
+            }
+        } else { // The rune is not in the clip region
+            break
+        }
 	}
 
-	return cell_x - x
+	return cellX - x
 }
 
 func StrCellWidth(s string) int {
@@ -56,4 +78,25 @@ func maxInt(a, b int) int {
 // Checks if i is in [left; right]
 func in (i, left, right int) bool {
     return i >= left && i <= right
+}
+
+// reverseInt - reverses the slice of ints
+func reverseInt(s []int) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+    		s[i], s[j] = s[j], s[i]
+	}
+}
+
+// splitToGigits - splits the int number into a slice of its digits
+func splitToDigits(n int) []int{
+	var _ret []int
+	
+	for n !=0 {
+		_ret = append(_ret, n % 10)
+		n /= 10
+	}
+	
+	reverseInt(_ret)
+	
+	return _ret
 }
