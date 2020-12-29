@@ -18,28 +18,35 @@ func EmitStr(x, y int, style tcell.Style, str string, clip *ClippingRegion) int 
 			w = 1
         }
         
-        // Check if long runes fit into the clip region
-        if clip.inClipRecion(cellX, y) {
-            if w == 1 {
+        if w == 1 {
+            if clip.inClipRecion(cellX, y) {
+                Screen.SetContent(cellX, y, c, comb, style)
+            }
+            cellX += w    
+        } else { // w == 2
+            inClip1 := clip.inClipRecion(cellX, y)   // Is 1st half of the rune visible?
+            inClip2 := clip.inClipRecion(cellX+1, y) // Is 2nd half of the rune visible?
+
+            if inClip1 && inClip2 { // Both rune parts are visible
                 Screen.SetContent(cellX, y, c, comb, style)
                 cellX += w    
-            } else { // w == 2
-                if clip.inClipRecion(cellX+1, y) { // if the second half of the rune fits in the clip region
-                    Screen.SetContent(cellX, y, c, comb, style)
-                    cellX += w    
-                } else { // The second half of the rune doesn't fit into the clip region
-                    // Just print ' ' instead of the entire double-width rune
-                    comb = []rune{c}
-                    c = ' '
-                    w = 1
-                    Screen.SetContent(cellX, y, c, comb, style)
-                    cellX += w    
-
-                    break;
-                }
+            } else if inClip1 && !inClip2 { // 1st part is visible, 2nd is not
+                // Just print ' ' instead of the entire double-width rune
+                comb = []rune{c}
+                c = ' '
+                w = 1
+                Screen.SetContent(cellX, y, c, comb, style)
+                cellX += w    
+            } else if !inClip1 && inClip2 { // 1st part isn't visible, 2nd is visible
+                // Just print ' ' instead of the entire double-width rune
+                comb = []rune{c}
+                c = ' '
+                w = 1
+                Screen.SetContent(cellX+1, y, c, comb, style)
+                cellX += w    
+            } else { // Neither rune part is visible
+                cellX += w
             }
-        } else { // The rune is not in the clip region
-            break
         }
 	}
 
