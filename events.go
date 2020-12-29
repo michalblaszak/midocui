@@ -56,7 +56,7 @@ func (e *Event) Processed() bool {
 }
 
 type EventKey struct {
-    Event
+    *Event
 
     Key       tcell.Key
     Rune      rune
@@ -64,6 +64,11 @@ type EventKey struct {
 }
 
 type EventCloseWin struct {
-    Event
+    *Event
     syncChan chan bool
+}
+
+type EventTypedCommand struct {
+    *Event
+    Command ttypedCommand
 }

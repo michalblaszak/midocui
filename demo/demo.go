@@ -69,8 +69,16 @@ func main() {
     /*_menuItem3 := */ _menuBar.AddMenuItem("Help")
     _menuBar.AddMenuItem("Michał 乩")
 
-	/* _statusBar := */
-	midocui.Desktop.AddStatusBar()
+    _statusBar := midocui.Desktop.AddStatusBar()
+    
+    _label := midocui.CreateLabel(_statusBar)
+    _label.SetCoords(0, 0, 10, 1)
+    _label.SetColors(tcell.ColorBlack, ' ', tcell.ColorWhite)
+    _label.SetLabel("")
+
+    _statusBar.CommandLabel = _label
+
+
 
     midocui.App.Run()
 }

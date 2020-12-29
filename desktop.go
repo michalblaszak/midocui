@@ -41,6 +41,7 @@ var Desktop = DesktopWindow{
             },
             activeWidget: nil,
         },
+        state:      winStateNormal,
         resizable:  false,
         bkgColor:   tcell.ColorBlue,
         bkgPattern: tcell.RuneBoard,
@@ -57,6 +58,36 @@ var Desktop = DesktopWindow{
 // Ctrl-Tab        : move to the next window
 // Other keystrokes: will be delegate to the currently active window or decktop's menubar (if active)
 func (d *DesktopWindow) HandleEvent(ev IEvent) {
+
+    // Handle special modes on the Desktop level
+    // - Entering move, resize modes
+    // - Escaping from move, resize modes
+    switch ev.(type) {
+    case *EventTypedCommand:
+        event := ev.(*EventTypedCommand)
+        switch event.Command {
+        case typedCommandResize:
+            if d.menubar != nil && d.menubar.active {
+                d.menubar.ToggleActive()
+            }
+            d.setActiveWinState(winStateResize)
+        case typedCommandMove:
+            if d.menubar != nil && d.menubar.active {
+                d.menubar.ToggleActive()
+            }
+            d.setActiveWinState(winStateMove)
+        case typedCommandAppMenu:
+            if d.menubar != nil {
+                d.menubar.ToggleActive()
+                event.processed = true
+            }
+    case typedCommandUnknown:
+        default:
+            event.processed = true;
+        }
+    }
+
+
     if !ev.Processed() {
         if d.activeWidget != nil {
             d.activeWidget.HandleEvent(ev)
@@ -66,21 +97,17 @@ func (d *DesktopWindow) HandleEvent(ev IEvent) {
     if !ev.Processed() {
         switch ev.(type) {
         case *EventKey:
+            d.statusbar.HandleEvent(ev)
+
             event := ev.(*EventKey)
             switch {
-            case event.Key == tcell.KeyF10 && (event.Modifiers & tcell.ModAlt == tcell.ModAlt) && d.menubar != nil:
-                d.menubar.ToggleActive()
-                event.processed = true
-            case event.Key == tcell.KeyRune && event.Rune == 'x' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
-                ev := &SysEventQuit{}
-                ev.SetEventNow()
-                go func() { Screen.PostEventWait(ev) }()
-                event.processed = true
             case event.Key == tcell.KeyTab && (event.Modifiers & tcell.ModCtrl == tcell.ModCtrl):
                 d.activateNextWindow()
                 event.processed = true
     
             }
+        case *EventTypedCommand:
+            d.statusbar.HandleEvent(ev)
         }
     }
 
@@ -90,6 +117,12 @@ func (d *DesktopWindow) HandleEvent(ev IEvent) {
         }
     }
 
+}
+
+func (d *DesktopWindow) setActiveWinState(st twinState) {
+    if d.activeWindow != nil {
+        d.activeWindow.setState(st)
+    }
 }
 
 func (d *DesktopWindow) activateNextWindow() {

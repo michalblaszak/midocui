@@ -10,11 +10,60 @@ import (
 	"github.com/gdamore/tcell/v2/encoding"
 )
 
-type SApp struct {
+type tAppMode int
 
+const (
+    appModeNormal       tAppMode = iota
+    appModeTypedCommand
+)
+
+type SApp struct {
+    appMode       tAppMode
+    commandBuffer string
 }
 
-var App SApp = SApp{}
+var App SApp = SApp{
+    appMode: appModeNormal,
+}
+
+func typedCommand(ev *tcell.EventKey) ttypedCommand {
+    if (ev.Modifiers() & tcell.ModAlt == tcell.ModAlt) {
+        App.appMode = appModeTypedCommand
+
+        if ev.Key() == tcell.KeyF10 {
+            App.appMode = appModeNormal
+            App.commandBuffer = ""
+            return typedCommandAppMenu
+        } 
+
+        App.commandBuffer += string(ev.Rune())
+
+        switch App.commandBuffer {
+        case "resize":
+            App.appMode = appModeNormal
+            App.commandBuffer = ""
+            return typedCommandResize
+        case "move":
+            App.appMode = appModeNormal
+            App.commandBuffer = ""
+            return typedCommandMove
+        case "menu":
+            App.appMode = appModeNormal
+            App.commandBuffer = ""
+            return typedCommandAppMenu
+        case "x":
+            App.appMode = appModeNormal
+            App.commandBuffer = ""
+            return typedCommandAppQuit
+        default:
+            return typedCommandUnknown
+        }
+    } else {
+        App.appMode = appModeNormal
+        App.commandBuffer = ""
+        return typedCommandNone
+    }
+}
 
 func InitScreen() {
 	encoding.Register()
@@ -81,16 +130,53 @@ func (a *SApp) Run() {
             Screen.Sync()
             Desktop.resize()
         case *tcell.EventKey:
-            event := EventKey {
-                Event: Event {
-                    timestamp: time.Now(),
-                    processed: false,
-                },
-                Key: ev.Key(),
-                Rune: ev.Rune(),
-                Modifiers: ev.Modifiers(),
+            typedCommand := typedCommand(ev)
+            var event IEvent
+
+            switch typedCommand {
+            case typedCommandNone:
+                event = &EventKey {
+                    Event: &Event {
+                        timestamp: time.Now(),
+                        processed: false,
+                    },
+                    Key: ev.Key(),
+                    Rune: ev.Rune(),
+                    Modifiers: ev.Modifiers(),
+                }
+                Desktop.HandleEvent(event)
+            case typedCommandUnknown: // This command is unknown to Desktop. Delegate it to the active window for potential processing
+                event = &EventTypedCommand {
+                    Event: &Event {
+                        timestamp: time.Now(),
+                        processed: false,
+                    },
+                    Command: typedCommandUnknown,
+                }
+                Desktop.HandleEvent(event)
+
+                if event.Processed() {
+                    a.appMode = appModeNormal
+                    a.commandBuffer = ""
+                }
+            case typedCommandMove, typedCommandResize, typedCommandAppMenu:
+                event = &EventTypedCommand {
+                    Event: &Event {
+                        timestamp: time.Now(),
+                        processed: false,
+                    },
+                    Command: typedCommand,
+                }
+                Desktop.HandleEvent(event)
+            case typedCommandAppQuit:
+                Screen.Fini()
+                os.Exit(0)
             }
-            Desktop.HandleEvent(&event)
+
+            // if a.appMode == appModeTypedCommand && event.Processed() {
+            //     a.appMode = appModeNormal
+            //     a.commandBuffer = ""
+            // }
         case *SysEventQuit:
             Screen.Fini()
             os.Exit(0)

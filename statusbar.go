@@ -7,7 +7,10 @@ type StatusBar struct {
 
 	bkgColor   tcell.Color
 	bkgPattern rune
-	foreColor  tcell.Color
+    foreColor  tcell.Color
+    
+    // TODO: it's temporary
+    CommandLabel *Label
 }
 
 func (s *StatusBar) Paint() {
@@ -20,10 +23,23 @@ func (s *StatusBar) Paint() {
     st = st.Bold(true)
 
     s.erase(&parentClip, st, s.bkgPattern)
+
+    s.CommandLabel.Paint()
 }
 
 func (s *StatusBar) HandleEvent(ev IEvent) {
-	return
+    switch ev.(type) {
+    case *EventKey:
+        if App.appMode == appModeTypedCommand {
+            s.CommandLabel.label = App.commandBuffer
+            Repaint()
+        }
+    case *EventTypedCommand:
+        s.CommandLabel.label = App.commandBuffer
+        Repaint()
+    }
+
+    return
 }
 
 func (s *StatusBar) getDeviceClientCoords(_ TClientAreaType) (region Region, clipRegion ClippingRegion) {

@@ -145,6 +145,7 @@ func (s *MenuBar) HandleEvent(ev IEvent) {
             if s.active {
                 activeMenuItem := s.getActiveMenuItem()
                 if activeMenuItem != nil && activeMenuItem.Action != nil {
+                    s.ToggleActive()
                     activeMenuItem.Action()
                 }
                 event.processed = true

@@ -185,4 +185,16 @@ const (
 	BlackLowerLeftTriangle        rune = '\u25E3' // ◣ BLACK LOWER LEFT TRIANGLE  → 1FB9F 🮟  lower left triangular medium shade
 	BlackUpperLeftTriangle        rune = '\u25E4' // ◤ BLACK UPPER LEFT TRIANGLE  → 1FB9C 🮜  upper left triangular medium shade
 	BlackUpperRighttTriangle      rune = '\u25E5' // ◥ BLACK UPPER RIGHT TRIANGLE → 1FB9D �
+	BlackUpPointingTriangle       rune = '\u25B2' // ▲ BLACK UP-POINTING TRIANGLE
+	BlackRightPointingTriangle    rune = '\u25B6' // ▶ BLACK RIGHT-POINTING TRIANGLE
+	BlackDownPointingTriangle     rune = '\u25BC' // ▼ BLACK DOWN-POINTING TRIANGLE
+	BlackLeftPointingTriangle     rune = '\u25C0' // ◀ BLACK LEFT-POINTING TRIANGLE
+)
+
+// From Supplemental Arrows-C https://www.unicode.org/charts/PDF/U1F800.pdf
+const (
+	LefwardsHeavyArrow   rune = '\U0001F844' // 🡄 LEFTWARDS HEAVY ARROW
+	UpwardsHeavyArrow    rune = '\U0001F845' // 🡅 UPWARDS HEAVY ARROW
+	RightwardsHeavyArrow rune = '\U0001F846' // 🡆 RIGHTWARDS HEAVY ARROW
+	DownwardsHeavyArrow  rune = '\U0001F847' // 🡇 DOWNWARDS HEAVY ARROW
 )

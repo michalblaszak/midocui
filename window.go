@@ -180,13 +180,26 @@ type winTicker struct {
     f func(t time.Time)
 }
 
+type twinState int
+
+const (
+    winStateNormal twinState = iota
+    winStateMove
+    winStateResize
+)
+
 type Window struct {
 	Widget
 
+    state      twinState
 	resizable  bool
 	bkgColor   tcell.Color
 	bkgPattern rune
 	foreColor  tcell.Color
+	bkgColorMgmt   tcell.Color
+	bkgPatternMgmt rune
+    foreColorMgmt  tcell.Color
+    foreColorMgmtLabel tcell.Color
 
 	// Special widgets
 	menubar   *MenuBar
@@ -222,9 +235,9 @@ func CreateWindow(parentPar IWidget) *Window {
             w:    20,
             h:    20,
             border: Border{
-                top:       BorderStyleSingle,
+                top:       BorderStyleDouble,
                 right:     BorderStyleDouble,
-                bottom:    BorderStyleSingle,
+                bottom:    BorderStyleDouble,
                 left:      BorderStyleDouble,
                 bkgColor:  tcell.ColorBlue,
                 foreColorActive: tcell.ColorWhite,
@@ -232,10 +245,15 @@ func CreateWindow(parentPar IWidget) *Window {
             },
             activeWidget: nil,
         },
+        state:      winStateNormal,
         resizable:  false,
         bkgColor:   tcell.ColorBlue,
         bkgPattern: tcell.RuneBoard,
         foreColor:  tcell.ColorWhite,
+        bkgColorMgmt:   tcell.ColorBlack,
+        bkgPatternMgmt: tcell.RuneBoard,
+        foreColorMgmt:  tcell.ColorGray,
+        foreColorMgmtLabel:  tcell.ColorWhite,
         menubar:    nil,
         statusbar:  nil,
         WinFunc: nil,
@@ -256,19 +274,14 @@ func CreateWindow(parentPar IWidget) *Window {
 }
 
 // No interface methods
+func (w *Window) setState(st twinState) {
+    w.state = st
+    Repaint()
+}
+
 func (w *Window) paintBorder(region *Region, clipRegion *ClippingRegion) {
     // Is this window the active one in it's parent?
     _isActive := Desktop.activeWindow != nil && Desktop.activeWindow.id == w.id
-    // var px1, py1, px2, py2 int
-
-    // if w.parent == nil {
-    //     px1, py1, px2, py2 = w.getDeviceClientCoords(windowRaw)
-    // } else {
-    //     px1, py1, px2, py2 = w.parent.getDeviceClientCoords(windowClientArea)
-    // }
-
-    // x1, y1, x2, y2 := w.getDeviceClientCoords(windowRaw)
-
 
     // Paint border
 	topBorder := w.border.getTopBorder()
@@ -290,23 +303,6 @@ func (w *Window) paintBorder(region *Region, clipRegion *ClippingRegion) {
     }
 	st = st.Bold(true)
 
-    // Corners
-    // if in(x1, px1, px2) && in(y1, py1, py2) {
-    //     Screen.SetContent(x1, y1, leftTopCorner, nil, st)
-    // }
-    // if in(x2, px1, px2) && in(y1, py1, py2) {
-    //     Screen.SetContent(x2, y1, rightTopCorner, nil, st)
-    // }
-    // if in(x1, px1, px2) && in(y2, py1, py2) {
-    //     Screen.SetContent(x1, y2, leftBottomCorner, nil, st)
-    // }
-    // if in(x2, px1, px2) && in(y2, py1, py2) {
-    //     Screen.SetContent(x2, y2, rightBottomCorner, nil, st)
-    // }
-
-    // fmt.Printf("%d: clip region\n", w.id)
-    // fmt.Println(clipRegion)
-    // fmt.Println(region)
     if clipRegion.inClipRecion(region.x1, region.y1) {
         // fmt.Printf("%d: 1\n", w.id)
         Screen.SetContent(region.x1, region.y1, leftTopCorner, nil, st)
@@ -348,26 +344,13 @@ func (w *Window) paintBorder(region *Region, clipRegion *ClippingRegion) {
 }
 
 func (w *Window) paintBackground(region *Region, clipRegion *ClippingRegion) {
-    // var px1, py1, px2, py2 int
 
-    // if w.parent == nil {
-    //     px1, py1, px2, py2 = w.getDeviceClientCoords(windowRaw)
-    // } else {
-    //     px1, py1, px2, py2 = w.parent.getDeviceClientCoords(windowClientArea)
-    // }
-    // x1, y1, x2, y2 := w.getDeviceClientCoords(windowWithBorders)
-
-	st := tcell.StyleDefault
-	st = st.Background(w.bkgColor)
-	st = st.Foreground(w.foreColor)
-	st = st.Bold(true)
+    st := tcell.StyleDefault
+    st = st.Bold(false)
+    st = st.Background(w.bkgColor)
+    st = st.Foreground(w.foreColor)
 
     w.erase(clipRegion, st, w.bkgPattern)
-	// for x := maxInt(x1, px1); x <= minInt(x2, px2); x++ {
-	// 	for y := maxInt(y1, py1); y <= minInt(y2, py2); y++ {
-	// 		Screen.SetContent(x, y, w.bkgPattern, nil, st)
-	// 	}
-	// }
 }
 
 func (w *Window) Paint() {
@@ -384,6 +367,45 @@ func (w *Window) Paint() {
     
     for _, c := range w.children {
         c.Paint()
+    }
+
+    // Gray-out if window is in Move or Resize state
+    if w.state == winStateMove ||
+       w.state == winStateResize {
+        for x := parentClip.x1; x <= parentClip.x2; x++ {
+            for y := parentClip.y1; y <= parentClip.y2; y++ {
+                mainc, combc, st, _ := Screen.GetContent(x, y)
+                st = st.Background(w.bkgColorMgmt)
+                st = st.Foreground(w.foreColorMgmt)
+                Screen.SetContent(x, y, mainc, combc, st)
+            }
+        }
+
+        // Put a comment on top of the window
+        st := tcell.StyleDefault
+        st = st.Bold(true)
+        st = st.Background(w.bkgColorMgmt)
+        st = st.Foreground(w.foreColorMgmtLabel)
+
+        xMiddle := (parentRegion.x1 + parentRegion.x2)/2
+        yMiddle := (parentRegion.y1 + parentRegion.y2)/2
+
+        switch w.state {
+        case winStateMove:
+            EmitStr(xMiddle-2, yMiddle,   st, "move", &parentClip)
+
+            EmitStr(xMiddle,   yMiddle-2, st, string(BlackUpPointingTriangle), &parentClip)
+            EmitStr(xMiddle-4, yMiddle,   st, string(BlackLeftPointingTriangle), &parentClip)
+            EmitStr(xMiddle+3, yMiddle,   st, string(BlackRightPointingTriangle), &parentClip)
+            EmitStr(xMiddle,   yMiddle+2, st, string(BlackDownPointingTriangle), &parentClip)
+        case winStateResize:
+            EmitStr(xMiddle-3, yMiddle,   st, "resize", &parentClip)
+
+            EmitStr(xMiddle,   yMiddle-2, st, string(BlackUpPointingTriangle), &parentClip)
+            EmitStr(xMiddle-5, yMiddle,   st, string(BlackLeftPointingTriangle), &parentClip)
+            EmitStr(xMiddle+4, yMiddle,   st, string(BlackRightPointingTriangle), &parentClip)
+            EmitStr(xMiddle,   yMiddle+2, st, string(BlackDownPointingTriangle), &parentClip)
+        }
     }
 }
 
@@ -404,7 +426,57 @@ func (w *Window) HandleEvent(ev IEvent) {
         case event.Key == tcell.KeyRune && event.Rune == 'c' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
             event.processed = true
             w.Close()
-        // case event.Key == tcell.KeyRune && event.Rune == 'x' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
+        case event.Key == tcell.KeyESC && (event.Modifiers == tcell.ModNone ):
+            switch w.state {
+            case winStateMove, winStateResize:
+                event.processed = true
+                w.setState(winStateNormal)
+            }
+        case event.Key == tcell.KeyLeft && (event.Modifiers == tcell.ModNone ):
+            switch w.state {
+            case winStateMove:
+                event.processed = true
+                w.left--
+                Repaint()
+            case winStateResize:
+                event.processed = true
+                if w.w > 5 { w.w-- }
+                Repaint()
+            }
+        case event.Key == tcell.KeyRight && (event.Modifiers == tcell.ModNone ):
+            switch w.state {
+            case winStateMove:
+                event.processed = true
+                w.left++
+                Repaint()
+            case winStateResize:
+                event.processed = true
+                w.w++
+                Repaint()
+            }
+        case event.Key == tcell.KeyUp && (event.Modifiers == tcell.ModNone ):
+            switch w.state {
+            case winStateMove:
+                event.processed = true
+                w.top--
+                Repaint()
+            case winStateResize:
+                event.processed = true
+                if w.h > 5 { w.h-- }
+                Repaint()
+            }
+        case event.Key == tcell.KeyDown && (event.Modifiers == tcell.ModNone ):
+            switch w.state {
+            case winStateMove:
+                event.processed = true
+                w.top++
+                Repaint()
+            case winStateResize:
+                event.processed = true
+                w.h++
+                Repaint()
+            }
+            // case event.Key == tcell.KeyRune && event.Rune == 'x' && (event.Modifiers & tcell.ModAlt == tcell.ModAlt):
         //     ev := &SysEventQuit{}
         //     ev.SetEventNow()
         //     go func() { Screen.PostEventWait(ev) }()
@@ -440,10 +512,10 @@ func (w *Window) AddStatusBar() *StatusBar {
         },
 		bkgColor:   tcell.ColorWhite,
 		bkgPattern: ' ',
-		foreColor:  tcell.ColorBlack,
+        foreColor:  tcell.ColorBlack,
 	}
 
-	w.statusbar = &_statusBar
+    w.statusbar = &_statusBar
 
 	return &_statusBar
 }
@@ -597,7 +669,7 @@ func (w *Window) stopWin() {
     // Stop timer
     syncChan := make(chan bool)
     ev := &EventCloseWin {
-        Event: Event {
+        Event: &Event {
             timestamp: time.Now(),
         },
         syncChan: syncChan,
