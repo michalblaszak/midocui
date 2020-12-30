@@ -19,8 +19,7 @@ func (clip *ClippingRegion) inClipRecion(x, y int) bool {
 
 type DesktopWindow struct {
     Window
-    childWindows []*Window
-    activeWindow *Window
+    childWindows []*Window // The last in the list is the currently active one
 }
 
 var Desktop = DesktopWindow{
@@ -101,10 +100,13 @@ func (d *DesktopWindow) HandleEvent(ev IEvent) {
 
             event := ev.(*EventKey)
             switch {
-            case event.Key == tcell.KeyTab && (event.Modifiers & tcell.ModCtrl == tcell.ModCtrl):
+            case event.Key == tcell.KeyTab && (event.Modifiers & (tcell.ModCtrl | tcell.ModShift) == tcell.ModCtrl):
                 d.activateNextWindow()
                 event.processed = true
     
+            case event.Key == tcell.KeyTab && ((event.Modifiers & (tcell.ModCtrl | tcell.ModShift)) == (tcell.ModCtrl | tcell.ModShift)):
+                d.activatePreviousWindow()
+                event.processed = true
             }
         case *EventTypedCommand:
             d.statusbar.HandleEvent(ev)
@@ -112,42 +114,38 @@ func (d *DesktopWindow) HandleEvent(ev IEvent) {
     }
 
     if !ev.Processed() {
-        if d.activeWindow != nil {
-            d.activeWindow.SendEvent(ev)
+        currWin := d.getActiveChildWin()
+        if currWin != nil {
+            currWin.SendEvent(ev)
         }
     }
 
 }
 
 func (d *DesktopWindow) setActiveWinState(st twinState) {
-    if d.activeWindow != nil {
-        d.activeWindow.setState(st)
+    currWin := d.getActiveChildWin()
+    if currWin != nil {
+        currWin.setState(st)
     }
 }
 
 func (d *DesktopWindow) activateNextWindow() {
-    if d.activeWindow == nil {
-        // Set the first one in a list if one exists
-        if len(d.childWindows) > 0 {
-            d.activeWindow = d.childWindows[0]
-            repaint = true;
-        }
-    } else {
-        // Look for a next window
-        found_i := -1
-        for i, item := range d.childWindows {
-            if item.id == d.activeWindow.id {
-                found_i = i
-            }
-        }
+    currWin := d.getActiveChildWin()
+    if currWin != nil {
+        copy(d.childWindows[1:], d.childWindows)
+        d.childWindows[0] = currWin
 
-        if found_i != -1 {
-            d.activeWindow = d.childWindows[(found_i+1) % len(d.childWindows)]
-            repaint = true;
-        } else {
-            // Something went wrong. We have a current window which is not in a list of child windows.
-            // TODO: Report the situation in a log.
-        }
+        repaint = true
+    }
+}
+
+func (d *DesktopWindow) activatePreviousWindow() {
+    if len(d.childWindows) > 0 {
+        currWin := d.childWindows[0]
+        copy(d.childWindows, d.childWindows[1:])
+        d.childWindows[len(d.childWindows)-1] = currWin
+
+        repaint = true
     }
 }
 
@@ -165,7 +163,6 @@ func (d *DesktopWindow) resize() {
 
 func (d *DesktopWindow) RunWin(win *Window) {
     d.childWindows = append(d.childWindows, win)
-    d.activeWindow = win
 
     go func() {win.startWin()} () // Start the window event loop
 
@@ -176,42 +173,21 @@ func (w *DesktopWindow) getDeviceClientCoords(clientAreaType TClientAreaType) (r
     return w.Window.getDeviceClientCoords(clientAreaType)
 }
 
-func (w *DesktopWindow) CloseCurrentWin() {
-    if w.activeWindow != nil {
-        _id := w.activeWindow.id
-        w.activeWindow.stopWin()
-        w.activeWindow = nil
-
-        found_i := -1
-        for i, item := range w.childWindows {
-            if found_i != -1 {
-                w.childWindows[i-1] = item
-                w.childWindows[i] = nil
-
-                if w.activeWindow == nil {
-                    w.activeWindow = item
-                }
-            } else {
-                if item.id == _id {
-                    found_i = i
-                    w.childWindows[i] = nil
-                }
-            }
-        }
-
-        // We found the window to close
-        if found_i != -1 {
-            // Probably it was the last in the list. The new last becomes the new current.
-            if w.activeWindow == nil && found_i > 0 {
-                w.activeWindow = w.childWindows[found_i-1]
-            }
-
-            // Shrink the slice by 1
-            w.childWindows = w.childWindows[:len(w.childWindows)-1]
-        }
+func (w *DesktopWindow) getActiveChildWin() *Window {
+    if numChildren := len(w.childWindows); numChildren == 0 {
+        return nil
+    } else {
+        return w.childWindows[numChildren-1]
     }
+}
 
-    repaint = true
+func (w *DesktopWindow) CloseCurrentWin() {
+    if len(w.childWindows) > 0 {
+        w.childWindows[len(w.childWindows)-1].stopWin()
+        
+        w.childWindows = w.childWindows[1:len(w.childWindows)-1]
+        repaint = true
+    }
 }
 
 var Screen tcell.Screen

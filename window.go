@@ -281,7 +281,7 @@ func (w *Window) setState(st twinState) {
 
 func (w *Window) paintBorder(region *Region, clipRegion *ClippingRegion) {
     // Is this window the active one in it's parent?
-    _isActive := Desktop.activeWindow != nil && Desktop.activeWindow.id == w.id
+    _isActive := len(Desktop.childWindows) > 0 && Desktop.getActiveChildWin().id == w.id
 
     // Paint border
 	topBorder := w.border.getTopBorder()
