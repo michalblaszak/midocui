@@ -185,7 +185,7 @@ func (w *DesktopWindow) CloseCurrentWin() {
     if len(w.childWindows) > 0 {
         w.childWindows[len(w.childWindows)-1].stopWin()
         
-        w.childWindows = w.childWindows[1:len(w.childWindows)-1]
+        w.childWindows = w.childWindows[:len(w.childWindows)-1]
         repaint = true
     }
 }
